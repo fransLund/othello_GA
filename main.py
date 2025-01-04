@@ -1,20 +1,17 @@
 import pygame
 import random
+from constants import *
 
 pygame.init()
 
 font = pygame.font.Font(None, 36)
 large_font = pygame.font.Font(None, 72)  # För större sluttext
 
-screen_width = 1000
-screen_height = 800
 
 screen = pygame.display.set_mode((screen_width, screen_height))
 pygame.display.set_caption('Othello')
 
 # Define constants and variables
-tiles = 8
-line_width = 5
 markers = []
 clicked = False
 pos = []
@@ -24,13 +21,6 @@ winner_text = ""  # Variabel för att lagra vinnartexten
 show_no_moves_message = False
 shouldShowNoMovesMessage = False
 message_start_time = 0
-
-tile_width = 800 / tiles
-
-# Colors
-black = (0, 0, 0)
-white = (255, 255, 255)
-gray = (128, 128, 128)
 
 # Draw the grid
 def draw_grid():
@@ -152,19 +142,110 @@ def display_info(player):
     screen.blit(black_text, (820, 150))
     screen.blit(total_text, (820, 200))
 
+
+
+
+def count_gamePieces(board, player):
+    return sum(total_pieces(player))
+
+def calculate_options(board, player):
+    legal_moves = get_all_legal_moves(player)
+    return len(legal_moves)
+
+def positional_score(board, player):
+    opponent = -player
+    score = 0
+    for row in range(tiles):
+        for col in range(tiles):
+            if board[row][col] == player:
+                score += weights[row][col]
+            elif board[row][col] == opponent:
+                score -= weights[row][col]
+    return score
+
+def evaluate(board, player):
+    opponent = -player
+    disc_difference = count_gamePieces(board, player) - count_gamePieces(board, opponent)
+    mobility = calculate_options(board, player) - calculate_options(board, opponent)
+    position = positional_score(board, player)
+
+    # Tune weights based on importance
+    return (10 * disc_difference) + (5 * mobility) + position
+
+def is_terminal(board):
+    # Check if either player has legal moves
+    if has_legal_moves(1) or has_legal_moves(-1):
+        return False
+
+    # Check if the board is full
+    for row in board:
+        if 0 in row:
+            return False
+
+    return True
+
+
+def best_move(player):
+    legal_moves = get_all_legal_moves(player)
+    best_value = -float('inf') if player == -1 else float('inf')
+    best_move = None
+
+    for move in legal_moves:
+        x, y = move
+        markers[x][y] = player
+        flip_pieces(x, y, player)
+        board_value = minimax(markers, depth=3, isMaximizingPlayer=(player == 1), player=-player)
+        markers[x][y] = 0  # Undo move
+        # Undo flipped pieces if necessary
+
+        if (player == -1 and board_value > best_value) or (player == 1 and board_value < best_value):
+            best_value = board_value
+            best_move = move
+
+    return best_move
+
+
+def minimax(board, depth, isMaximizingPlayer, player):
+    if depth == 0 or is_terminal(board):  # Check if the game is over or max depth is reached
+        return evaluate(board, player)
+
+    if isMaximizingPlayer:
+        best_value = -float('inf')
+        for move in get_all_legal_moves(player):  # Generate possible moves
+            x, y = move
+            board[x][y] = player
+            flip_pieces(x, y, player)
+            value = minimax(board, depth - 1, False, -player)
+            best_value = max(best_value, value)
+            board[x][y] = 0  # Undo move
+            # Undo flipped pieces here if necessary
+        return best_value
+    else:
+        best_value = float('inf')
+        for move in get_all_legal_moves(player):  # Generate possible moves
+            x, y = move
+            board[x][y] = player
+            flip_pieces(x, y, player)
+            value = minimax(board, depth - 1, True, -player)
+            best_value = min(best_value, value)
+            board[x][y] = 0  # Undo move
+            # Undo flipped pieces here if necessary
+        return best_value
+
+
 def black_player_move():
     global player
-    legal_moves = get_all_legal_moves(player)
-    if legal_moves:
-        move = random.choice(legal_moves)
-        cell_x, cell_y = move
-        markers[cell_x][cell_y] = player
-        flip_pieces(cell_x, cell_y, player)
+    move = best_move(player)
+    if move:
+        x, y = move
+        markers[x][y] = player
+        flip_pieces(x, y, player)
         player *= -1
     else:
         check_game_over()
         if not game_over:
             shouldShowNoMovesMessage = True
+
 
 # Show the winner with a large text in the center of the board
 def show_winner():
