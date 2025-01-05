@@ -143,10 +143,11 @@ def display_info(player):
     screen.blit(total_text, (820, 200))
 
 
-
+#här är errorn
 
 def count_gamePieces(board, player):
-    return sum(total_pieces(player))
+    white_count, black_count, total_pieces = count_pieces()
+    return black_count
 
 def calculate_options(board, player):
     legal_moves = get_all_legal_moves(player)
@@ -189,20 +190,24 @@ def best_move(player):
     legal_moves = get_all_legal_moves(player)
     best_value = -float('inf') if player == -1 else float('inf')
     best_move = None
+    board_copy = markers[:]
+    board_value = minimax(board_copy, depth=3, isMaximizingPlayer=(player == 1), player=-player)
+    print(f'{board_value=} {legal_moves=}')
 
-    for move in legal_moves:
-        x, y = move
-        markers[x][y] = player
-        flip_pieces(x, y, player)
-        board_value = minimax(markers, depth=3, isMaximizingPlayer=(player == 1), player=-player)
-        markers[x][y] = 0  # Undo move
-        # Undo flipped pieces if necessary
-
-        if (player == -1 and board_value > best_value) or (player == 1 and board_value < best_value):
+    if (player == -1 and board_value > best_value) or (player == 1 and board_value < best_value):
             best_value = board_value
             best_move = move
 
     return best_move
+
+    # for move in legal_moves:
+    #     x, y = move
+    #     markers[x][y] = player
+    #     flip_pieces(x, y, player)
+    #     markers[x][y] = 0  # Undo move
+    #     # Undo flipped pieces if necessary
+
+        
 
 
 def minimax(board, depth, isMaximizingPlayer, player):
@@ -216,8 +221,11 @@ def minimax(board, depth, isMaximizingPlayer, player):
             board[x][y] = player
             flip_pieces(x, y, player)
             value = minimax(board, depth - 1, False, -player)
+
+            print(f'{isMaximizingPlayer=} {value=}')
+
             best_value = max(best_value, value)
-            board[x][y] = 0  # Undo move
+            board = markers[:] # Undo move
             # Undo flipped pieces here if necessary
         return best_value
     else:
@@ -227,14 +235,17 @@ def minimax(board, depth, isMaximizingPlayer, player):
             board[x][y] = player
             flip_pieces(x, y, player)
             value = minimax(board, depth - 1, True, -player)
+
+            print(f'{isMaximizingPlayer=} {value=}')
+
             best_value = min(best_value, value)
-            board[x][y] = 0  # Undo move
+            board = markers[:] # Undo move
             # Undo flipped pieces here if necessary
         return best_value
 
 
 def black_player_move():
-    global player
+    global player, shouldShowNoMovesMessage
     move = best_move(player)
     if move:
         x, y = move
@@ -242,9 +253,12 @@ def black_player_move():
         flip_pieces(x, y, player)
         player *= -1
     else:
-        check_game_over()
-        if not game_over:
-            shouldShowNoMovesMessage = True
+        if not has_legal_moves(player):
+            check_game_over()
+            if not game_over:
+                shouldShowNoMovesMessage = True
+                player *= -1  # Switch player if no moves are possible
+
 
 
 # Show the winner with a large text in the center of the board
