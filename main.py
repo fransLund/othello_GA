@@ -1,5 +1,6 @@
 import pygame
 import random
+import copy
 from constants import *
 
 pygame.init()
@@ -53,32 +54,32 @@ def draw_markers():
             elif markers[x][y] == -1:
                 pygame.draw.circle(screen, black, (x * 100 + 50, y * 100 + 50), 38)
 
-def get_all_legal_moves(player):
+def get_all_legal_moves(board, player):
     legal_moves = []
     for x in range(tiles):
         for y in range(tiles):
-            if is_legal_move(x, y, player):
+            if is_legal_move(board, x, y, player):
                 legal_moves.append([x, y])
 
     return legal_moves
 
 # Visar legal moves
-def show_legal_moves(player):
-    legal_moves = get_all_legal_moves(player)
+def show_legal_moves(board, player):
+    legal_moves = get_all_legal_moves(board, player)
     for legal_move in legal_moves:
         x, y = legal_move
         pygame.draw.circle(screen, gray, (x * 100 + 50, y * 100 + 50), 38, 4)
 
 # Check which pieces to flip in a specific direction
-def pieces_to_flip(x, y, dx, dy, player):
+def pieces_to_flip(board, x, y, dx, dy, player):
     x += dx
     y += dy
     pieces = []
 
     while 0 <= x < tiles and 0 <= y < tiles:
-        if markers[x][y] == 0:
+        if board[x][y] == 0:
             return []
-        if markers[x][y] == player:
+        if board[x][y] == player:
             return pieces
 
         pieces.append((x, y))
@@ -88,34 +89,34 @@ def pieces_to_flip(x, y, dx, dy, player):
     return []
 
 # Check if the move is legal
-def is_legal_move(x, y, player):
+def is_legal_move(board, x, y, player):
     try:
-        if markers[x][y] != 0:
+        if board[x][y] != 0:
             return False
 
         directions = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (1, 1), (-1, 1), (1, -1)]
         for dx, dy in directions:
-            if pieces_to_flip(x, y, dx, dy, player):
+            if pieces_to_flip(board, x, y, dx, dy, player):
                 return True
         return False
     except:
         return False
 
 # Flip pieces after a valid move
-def flip_pieces(x, y, player):
+def flip_pieces(board, x, y, player):
     directions = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (1, 1), (-1, 1), (1, -1)]
 
     for dx, dy in directions:
-        pieces = pieces_to_flip(x, y, dx, dy, player)
+        pieces = pieces_to_flip(board, x, y, dx, dy, player)
         for px, py in pieces:
-            markers[px][py] = player
+            board[px][py] = player
 
 # Function to count white, black, and total pieces
-def count_pieces():
+def count_pieces(board):
     white_count = 0
     black_count = 0
 
-    for row in markers:
+    for row in board:
         white_count += row.count(1)
         black_count += row.count(-1)
 
@@ -130,7 +131,7 @@ def display_info(player):
     pygame.draw.rect(screen, white, (800, 0, 200, screen_height))
 
     player_color = get_player_color(player)
-    white_count, black_count, total_pieces = count_pieces()
+    white_count, black_count, total_pieces = count_pieces(markers)
 
     player_text = font.render(f"Tur: {player_color}", True, black)
     white_text = font.render(f"Vita: {white_count}", True, black)
@@ -146,20 +147,11 @@ def display_info(player):
 #här är errorn
 
 def count_gamePieces(board, player):
-    white_count = sum(row.count(1) for row in board)
-    black_count = sum(row.count(-1) for row in board)
-    total_pieces = white_count + black_count
-
-    if player == 1:
-        return white_count
-    elif player == -1:
-        return black_count
-    else:
-        return total_pieces
-
+    white_count, black_count, total_pieces = count_pieces(board)
+    return black_count if player == -1 else white_count
 
 def calculate_options(board, player):
-    legal_moves = get_all_legal_moves(player)
+    legal_moves = get_all_legal_moves(board, player)
     return len(legal_moves)
 
 def positional_score(board, player):
@@ -179,12 +171,13 @@ def evaluate(board, player):
     mobility = calculate_options(board, player) - calculate_options(board, opponent)
     position = positional_score(board, player)
 
+    #print(f'{(10 * disc_difference) + (5 * mobility) + position}, {disc_difference=}, {mobility=}, {position=}')
     # Tune weights based on importance
     return (10 * disc_difference) + (5 * mobility) + position
 
 def is_terminal(board):
     # Check if either player has legal moves
-    if has_legal_moves(1) or has_legal_moves(-1):
+    if has_legal_moves(board, 1) or has_legal_moves(board, -1):
         return False
 
     # Check if the board is full
@@ -196,82 +189,85 @@ def is_terminal(board):
 
 
 def best_move(player):
-    legal_moves = get_all_legal_moves(player)
+    #global markers
+    board_copy = copy.deepcopy(markers)
+    legal_moves = get_all_legal_moves(board_copy, player)
     best_value = -float('inf') if player == -1 else float('inf')
     best_move = None
-    board_copy = markers[:]
-    board_value = minimax(board_copy, depth=3, isMaximizingPlayer=(player == 1), player=-player)
-    print(f'{board_value=} {legal_moves=}')
+    #board_value = minimax(board_copy, depth=3, isMaximizingPlayer=(player == -1), player=player)
+    #print(f'{legal_moves=}')
 
-    if (player == -1 and board_value > best_value) or (player == 1 and board_value < best_value):
-            best_value = board_value
-            best_move = move
+    for move in legal_moves:
+        board_before_move = copy.deepcopy(board_copy)
+        x, y = move
+        board_copy[x][y] = player
+        flip_pieces(board_copy, x, y, player)
+        board_value = minimax(board_copy, depth=3, isMaximizingPlayer=(player == -1), player=-player)
+        board_copy = copy.deepcopy(board_before_move) # Undo move
+        #print(f'{board_value=}, {move=}, {(player == -1 and board_value > best_value) or (player == 1 and board_value < best_value)}')
+
+        if (player == -1 and board_value > best_value) or (player == 1 and board_value < best_value):
+                best_value = board_value
+                best_move = move
 
     return best_move
 
-    # for move in legal_moves:
-    #     x, y = move
-    #     markers[x][y] = player
-    #     flip_pieces(x, y, player)
-    #     markers[x][y] = 0  # Undo move
-    #     # Undo flipped pieces if necessary
+    
 
         
 
 
 def minimax(board, depth, isMaximizingPlayer, player):
-    if depth == 0 or is_terminal(board):
+    #print(f'{board=}, {depth=}, {isMaximizingPlayer=}, {player=}, {markers=}')
+    if depth == 0 or is_terminal(board):  # Check if the game is over or max depth is reached
         return evaluate(board, player)
 
     if isMaximizingPlayer:
         best_value = -float('inf')
-        for move in get_all_legal_moves(player):
+        for move in get_all_legal_moves(board, player):  # Generate possible moves
+            board_before_move = copy.deepcopy(board)
             x, y = move
-            # Gör en ändring
             board[x][y] = player
-            flipped_pieces = flip_pieces(x, y, player)
-
-            # Rekursivt anropa minimax
+            flip_pieces(board, x, y, player)
             value = minimax(board, depth - 1, False, -player)
-            best_value = max(best_value, value)
 
-            # Ångra ändringarna
-            board[x][y] = 0
-            for px, py in flipped_pieces:
-                board[px][py] = -player
+            #print(f'{isMaximizingPlayer=} {value=}')
+
+            best_value = max(best_value, value)
+            board = copy.deepcopy(board_before_move) # Undo move
+            # Undo flipped pieces here if necessary
         return best_value
     else:
         best_value = float('inf')
-        for move in get_all_legal_moves(player):
+        for move in get_all_legal_moves(board, player):  # Generate possible moves
+            board_before_move = copy.deepcopy(board)
             x, y = move
-            # Gör en ändring
             board[x][y] = player
-            flipped_pieces = flip_pieces(x, y, player)
-
-            # Rekursivt anropa minimax
+            flip_pieces(board, x, y, player)
             value = minimax(board, depth - 1, True, -player)
+
+            #print(f'{isMaximizingPlayer=} {value=}')
+
             best_value = min(best_value, value)
-
-            # Ångra ändringarna
-            board[x][y] = 0
-            for px, py in flipped_pieces:
-                board[px][py] = -player
+            board = copy.deepcopy(board_before_move) # Undo move
+            # Undo flipped pieces here if necessary
         return best_value
-
 
 
 def black_player_move():
     global player, shouldShowNoMovesMessage
     move = best_move(player)
-    print(f'{move=}')
+
+    #print(f'{move=}')
+
     if move:
         x, y = move
         markers[x][y] = player
-        flip_pieces(x, y, player)
+        flip_pieces(markers, x, y, player)
         player *= -1
     else:
-        if not has_legal_moves(player):
-            check_game_over()
+        if not has_legal_moves(markers, player):
+            check_game_over(markers)
             if not game_over:
                 shouldShowNoMovesMessage = True
                 player *= -1  # Switch player if no moves are possible
@@ -288,11 +284,11 @@ def show_winner():
     pygame.display.update()
 
 # Check if the game is over
-def check_game_over():
+def check_game_over(board):
     global game_over, winner_text
-    white_count, black_count, _ = count_pieces()
+    white_count, black_count, _ = count_pieces(board)
 
-    if all(not has_legal_moves(p) for p in [1, -1]):
+    if all(not has_legal_moves(board, p) for p in [1, -1]):
         game_over = True
         if white_count > black_count:
             winner_text = "Vit vinner!"
@@ -302,8 +298,8 @@ def check_game_over():
             winner_text = "Oavgjort!"
 
 # Check if a player has valid moves
-def has_legal_moves(player):
-    legal_moves = get_all_legal_moves(player)
+def has_legal_moves(board, player):
+    legal_moves = get_all_legal_moves(board, player)
     return len(legal_moves) > 0
 
 # Start the game
@@ -315,7 +311,7 @@ run = True
 while run:
     draw_grid()
     draw_markers()
-    show_legal_moves(player)
+    show_legal_moves(markers, player)
     display_info(player)
 
     if not show_no_moves_message and shouldShowNoMovesMessage:
@@ -348,17 +344,17 @@ while run:
                     clicked = True
                 if event.type == pygame.MOUSEBUTTONUP and clicked:
                     clicked = False
-                    pos = pygame.mouse.get_pos()
+                    pos = pygame.mouse.get_pos() 
                     cell_x = pos[0] // 100
                     cell_y = pos[1] // 100
 
-                    if is_legal_move(cell_x, cell_y, player):
+                    if is_legal_move(markers, cell_x, cell_y, player):
                         markers[cell_x][cell_y] = player
-                        flip_pieces(cell_x, cell_y, player)
+                        flip_pieces(markers, cell_x, cell_y, player)
                         player *= -1
 
-            if not has_legal_moves(player):
-                check_game_over()
+            if not has_legal_moves(markers, player):
+                check_game_over(markers)
                 if not game_over and not shouldShowNoMovesMessage:
                     shouldShowNoMovesMessage = True
 
