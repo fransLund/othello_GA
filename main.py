@@ -104,11 +104,16 @@ def is_legal_move(x, y, player):
 # Flip pieces after a valid move
 def flip_pieces(x, y, player):
     directions = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (1, 1), (-1, 1), (1, -1)]
+    flipped_pieces = []  # Lista för att lagra alla ändrade pjäser
 
     for dx, dy in directions:
         pieces = pieces_to_flip(x, y, dx, dy, player)
         for px, py in pieces:
             markers[px][py] = player
+            flipped_pieces.extend(pieces)  # Lägg till ändrade pjäser
+
+    return flipped_pieces  # Returnera listan med ändrade pjäser
+
 
 # Function to count white, black, and total pieces
 def count_pieces():
@@ -146,8 +151,17 @@ def display_info(player):
 #här är errorn
 
 def count_gamePieces(board, player):
-    white_count, black_count, total_pieces = count_pieces()
-    return black_count
+    white_count = sum(row.count(1) for row in board)
+    black_count = sum(row.count(-1) for row in board)
+    total_pieces = white_count + black_count
+
+    if player == 1:
+        return white_count
+    elif player == -1:
+        return black_count
+    else:
+        return total_pieces
+
 
 def calculate_options(board, player):
     legal_moves = get_all_legal_moves(player)
@@ -188,65 +202,83 @@ def is_terminal(board):
 
 def best_move(player):
     legal_moves = get_all_legal_moves(player)
-    best_value = -float('inf') if player == -1 else float('inf')
-    best_move = None
-    board_copy = markers[:]
-    board_value = minimax(board_copy, depth=3, isMaximizingPlayer=(player == 1), player=-player)
-    print(f'{board_value=} {legal_moves=}')
+    if not legal_moves:  # Om inga legala drag finns
+        return None
 
-    if (player == -1 and board_value > best_value) or (player == 1 and board_value < best_value):
+    best_value = -float('inf') if player == 1 else float('inf')
+    best_move = None
+
+    for move in legal_moves:
+        x, y = move
+        # Kopiera brädet för att testa draget
+        board_copy = [row[:] for row in markers]
+        board_copy[x][y] = player
+        flipped_pieces = flip_pieces(x, y, player)  # Simulera draget
+
+        # Anropa minimax för att utvärdera draget
+        board_value = minimax(board_copy, depth=3, isMaximizingPlayer=(player == -1), player=-player)
+
+        # Logik för att uppdatera bästa värde och drag
+        if player == 1 and board_value > best_value:  # Maximizing player
+            best_value = board_value
+            best_move = move
+        elif player == -1 and board_value < best_value:  # Minimizing player
             best_value = board_value
             best_move = move
 
-    return best_move
+        # Ångra draget (ingen påverkan eftersom vi använder kopian)
+        board_copy[x][y] = 0
+        for px, py in flipped_pieces:
+            board_copy[px][py] = -player
 
-    # for move in legal_moves:
-    #     x, y = move
-    #     markers[x][y] = player
-    #     flip_pieces(x, y, player)
-    #     markers[x][y] = 0  # Undo move
-    #     # Undo flipped pieces if necessary
+    print(f'{best_value=}, {legal_moves=}, {best_move=}')
+    return best_move
 
         
 
 
 def minimax(board, depth, isMaximizingPlayer, player):
-    if depth == 0 or is_terminal(board):  # Check if the game is over or max depth is reached
+    if depth == 0 or is_terminal(board):
         return evaluate(board, player)
 
     if isMaximizingPlayer:
         best_value = -float('inf')
-        for move in get_all_legal_moves(player):  # Generate possible moves
+        for move in get_all_legal_moves(player):
             x, y = move
             board[x][y] = player
-            flip_pieces(x, y, player)
+            flipped_pieces = flip_pieces(x, y, player)  # Få listan med ändrade pjäser
+
             value = minimax(board, depth - 1, False, -player)
-
-            print(f'{isMaximizingPlayer=} {value=}')
-
             best_value = max(best_value, value)
-            board = markers[:] # Undo move
-            # Undo flipped pieces here if necessary
+
+            # Ångra ändringar
+            board[x][y] = 0
+            for px, py in flipped_pieces:
+                board[px][py] = -player
         return best_value
     else:
         best_value = float('inf')
-        for move in get_all_legal_moves(player):  # Generate possible moves
+        for move in get_all_legal_moves(player):
             x, y = move
             board[x][y] = player
-            flip_pieces(x, y, player)
+            flipped_pieces = flip_pieces(x, y, player)  # Få listan med ändrade pjäser
+
             value = minimax(board, depth - 1, True, -player)
-
-            print(f'{isMaximizingPlayer=} {value=}')
-
             best_value = min(best_value, value)
-            board = markers[:] # Undo move
-            # Undo flipped pieces here if necessary
+
+            # Ångra ändringar
+            board[x][y] = 0
+            for px, py in flipped_pieces:
+                board[px][py] = -player
         return best_value
+
+
 
 
 def black_player_move():
     global player, shouldShowNoMovesMessage
     move = best_move(player)
+    print(f'{move=}')
     if move:
         x, y = move
         markers[x][y] = player
