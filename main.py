@@ -191,37 +191,37 @@ def is_terminal(board):
 
 
 def best_move(player):
-    #global markers
     board_copy = copy.deepcopy(markers)
     legal_moves = get_all_legal_moves(board_copy, player)
     best_value = -float('inf') if player == -1 else float('inf')
     best_move = None
-    #board_value = minimax(board_copy, depth=3, isMaximizingPlayer=(player == -1), player=player)
-    print(f'{legal_moves=}')
+
+    alpha = -float('inf')
+    beta = float('inf')
 
     for move in legal_moves:
         board_before_move = copy.deepcopy(board_copy)
         x, y = move
         board_copy[x][y] = player
         flip_pieces(board_copy, x, y, player)
-        board_value = minimax(board_copy, depth=3, isMaximizingPlayer=(player == -1), player=-player)
-        board_copy = copy.deepcopy(board_before_move) # Undo move
-        #print(f'{board_value=}, {move=}, {(player == -1 and board_value > best_value) or (player == 1 and board_value < best_value)}')
+
+        board_value = minimax(board_copy, depth=3, isMaximizingPlayer=(player == -1), player=-player, alpha=alpha, beta=beta)
+        board_copy = copy.deepcopy(board_before_move)  # Undo move
 
         if (player == -1 and board_value > best_value) or (player == 1 and board_value < best_value):
-                best_value = board_value
-                best_move = move
+            best_value = board_value
+            best_move = move
 
     return best_move
+
 
     
 
         
 
 
-def minimax(board, depth, isMaximizingPlayer, player):
-    #print(f'{board=}, {depth=}, {isMaximizingPlayer=}, {player=}, {markers=}')
-    if depth == 0 or is_terminal(board):  # Check if the game is over or max depth is reached
+def minimax(board, depth, isMaximizingPlayer, player, alpha, beta):
+    if depth == 0 or is_terminal(board):  # Terminal condition
         return evaluate(board, player)
 
     if isMaximizingPlayer:
@@ -231,16 +231,23 @@ def minimax(board, depth, isMaximizingPlayer, player):
             x, y = move
             board[x][y] = player
             flip_pieces(board, x, y, player)
-            value = minimax(board, depth - 1, False, -player)
 
+            value = minimax(board, depth - 1, False, -player, alpha, beta)
 
             best_value = max(best_value, value)
-            board = copy.deepcopy(board_before_move) # Undo move
-            # Undo flipped pieces here if necessary
-            
-            print(f'{depth=}, {get_all_legal_moves(board, player)=}, {value=}')
+            alpha = max(alpha, best_value)
+
+            #print(f'{alpha=}, {beta=}')
+
+            # Undo the move
+            board = copy.deepcopy(board_before_move)
+
+            # Prune the branch
+            if beta <= alpha:
+                break
 
         return best_value
+
     else:
         best_value = float('inf')
         for move in get_all_legal_moves(board, player):  # Generate possible moves
@@ -248,14 +255,21 @@ def minimax(board, depth, isMaximizingPlayer, player):
             x, y = move
             board[x][y] = player
             flip_pieces(board, x, y, player)
-            value = minimax(board, depth - 1, True, -player)
 
-            #print(f'{isMaximizingPlayer=} {value=}')
+            value = minimax(board, depth - 1, True, -player, alpha, beta)
 
             best_value = min(best_value, value)
-            board = copy.deepcopy(board_before_move) # Undo move
-            # Undo flipped pieces here if necessary
+            beta = min(beta, best_value)
+
+            # Undo the move
+            board = copy.deepcopy(board_before_move)
+
+            # Prune the branch
+            if beta <= alpha:
+                break
+
         return best_value
+
 
 
 def black_player_move():
@@ -274,7 +288,6 @@ def black_player_move():
             check_game_over(markers)
             if not game_over:
                 shouldShowNoMovesMessage = True
-                player *= -1  # Switch player if no moves are possible
 
 
 
