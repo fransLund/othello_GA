@@ -15,6 +15,11 @@ cd othello_GA
 
 2. Install the required dependencies:
 
+install python
+
+sh:
+pip install pygame
+
 https://www.youtube.com/watch?v=y9VG3Pztok8&ab_channel=CodingWithRuss 
 
 Usage
