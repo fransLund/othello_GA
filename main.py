@@ -144,7 +144,6 @@ def display_info(player):
     screen.blit(total_text, (820, 200))
 
 
-#här är errorn
 
 def count_gamePieces(board, player):
     white_count, black_count, total_pieces = count_pieces(board)
@@ -171,9 +170,12 @@ def evaluate(board, player):
     mobility = calculate_options(board, player) - calculate_options(board, opponent)
     position = positional_score(board, player)
 
-    #print(f'{(10 * disc_difference) + (5 * mobility) + position}, {disc_difference=}, {mobility=}, {position=}')
+    #print(f'{(10 * disc_difference) + (5 * mobility) + (2 * position)}, {disc_difference=}, {mobility=}, {position=}')
     # Tune weights based on importance
-    return (10 * disc_difference) + (5 * mobility) + position
+
+    #print(f'{get_all_legal_moves(board, player)=}')
+
+    return (10 * disc_difference) + (5 * mobility) + (2 * position)
 
 def is_terminal(board):
     # Check if either player has legal moves
@@ -195,7 +197,7 @@ def best_move(player):
     best_value = -float('inf') if player == -1 else float('inf')
     best_move = None
     #board_value = minimax(board_copy, depth=3, isMaximizingPlayer=(player == -1), player=player)
-    #print(f'{legal_moves=}')
+    print(f'{legal_moves=}')
 
     for move in legal_moves:
         board_before_move = copy.deepcopy(board_copy)
@@ -231,11 +233,13 @@ def minimax(board, depth, isMaximizingPlayer, player):
             flip_pieces(board, x, y, player)
             value = minimax(board, depth - 1, False, -player)
 
-            #print(f'{isMaximizingPlayer=} {value=}')
 
             best_value = max(best_value, value)
             board = copy.deepcopy(board_before_move) # Undo move
             # Undo flipped pieces here if necessary
+            
+            print(f'{depth=}, {get_all_legal_moves(board, player)=}, {value=}')
+
         return best_value
     else:
         best_value = float('inf')
@@ -258,7 +262,7 @@ def black_player_move():
     global player, shouldShowNoMovesMessage
     move = best_move(player)
 
-    #print(f'{move=}')
+    print(f'{move=}')
 
     if move:
         x, y = move
