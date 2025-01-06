@@ -10,8 +10,6 @@ Installation
 ------------
 Clone the repository:
 
-sh
---
 git clone https://github.com/fransLund/othello_GA.git
 cd othello_GA
 
