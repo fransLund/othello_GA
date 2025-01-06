@@ -8,13 +8,13 @@ This project is a simple Othello game where you can play against the computer. T
 
 Installation
 ------------
-Clone the repository:
+1. Clone the repository:
 
 git clone https://github.com/fransLund/othello_GA.git
 cd othello_GA
 
-Install the required dependencies:
------------------------------------
+2. Install the required dependencies:
+   
 pip install pygame
 
 Usage
