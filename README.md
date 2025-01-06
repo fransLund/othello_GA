@@ -14,8 +14,8 @@ git clone https://github.com/fransLund/othello_GA.git
 cd othello_GA
 
 2. Install the required dependencies:
-   
-pip install pygame
+
+https://www.youtube.com/watch?v=y9VG3Pztok8&ab_channel=CodingWithRuss 
 
 Usage
 -----
